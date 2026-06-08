@@ -1,0 +1,12 @@
+[project]
+name = "serpapi-tutorial"
+version = "0.1.0"
+description = "Pre-viral restaurant finder powered by SerpAPI + Streamlit"
+requires-python = ">=3.14"
+dependencies = [
+    "streamlit>=1.35.0",
+    "requests>=2.31.0",
+    "pandas>=2.1.0",
+    "python-dotenv>=1.0.0",
+    "serpapi>=1.0.2",
+]
