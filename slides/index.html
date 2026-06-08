@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Restaurants Before They Go Viral</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #eef0f5);
+}
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #eef0f5);
+}
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+.slide.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+:root {
+    --stage-bg: #eef0f5;
+    --slide-bg: #ffffff;
+    --surface: #f3f5fa;
+    --surface-2: #e8ecf4;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-dim: #9ca3af;
+    --accent: rgb(26, 108, 223);
+    --accent-dim: rgba(26, 108, 223, 0.08);
+    --accent-border: rgba(26, 108, 223, 0.25);
+    --danger: #dc2626;
+    --warning: #92400e;
+    --string: #c2410c;
+    --keyword: #1d4ed8;
+    --border: rgba(0, 0, 0, 0.08);
+    --code-titlebar: #e2e6f0;
+    --grid-line: rgba(26, 108, 223, 0.05);
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+[data-theme="dark"] {
+    --stage-bg: #0a0c10;
+    --slide-bg: #0f1117;
+    --surface: #1e2130;
+    --surface-2: #252839;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8892a4;
+    --text-dim: #4a5568;
+    --accent-dim: rgba(26, 108, 223, 0.15);
+    --accent-border: rgba(26, 108, 223, 0.35);
+    --danger: #f47174;
+    --warning: #dcdcaa;
+    --string: #ce9178;
+    --keyword: #569cd6;
+    --border: rgba(255, 255, 255, 0.06);
+    --code-titlebar: #1a1d2e;
+    --grid-line: rgba(26, 108, 223, 0.02);
+}
+
+.slide {
+    background: var(--slide-bg);
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+}
+.slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 80px 80px;
+    pointer-events: none;
+    z-index: 0;
+}
+.slide-inner {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+}
+.accent-bar {
+    position: absolute;
+    left: 80px;
+    top: 80px;
+    bottom: 80px;
+    width: 3px;
+    background: var(--accent);
+    opacity: 0.5;
+}
+.section-label {
+    position: absolute;
+    top: 52px;
+    right: 80px;
+    font-family: var(--font-mono);
+    font-size: 22px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+.slide-num {
+    position: absolute;
+    bottom: 48px;
+    right: 80px;
+    font-family: var(--font-mono);
+    font-size: 20px;
+    color: var(--text-dim);
+}
+
+/* ── SLIDE 1: TITLE ── */
+#slide-1 .title-content {
+    position: absolute;
+    left: 160px;
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 1300px;
+}
+#slide-1 .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.2s forwards;
+}
+#slide-1 .main-title {
+    font-size: 92px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text-primary);
+    margin: 0 0 48px 0;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.4s forwards;
+}
+#slide-1 .main-title em { color: var(--accent); font-style: normal; }
+#slide-1 .subtitle-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.7s forwards;
+}
+#slide-1 .tech-tag {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 22px;
+    border-radius: 6px;
+}
+#slide-1 .separator { color: var(--text-dim); font-size: 26px; }
+#slide-1 .collab-bar {
+    position: absolute;
+    bottom: 64px;
+    left: 160px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    opacity: 0;
+    animation: fadeIn 0.6s ease 1.2s forwards;
+}
+#slide-1 .collab-logo {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 20px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+}
+#slide-1 .collab-logo .accent { color: var(--accent); font-weight: 700; }
+#slide-1 .collab-x { color: var(--text-dim); font-size: 18px; font-family: var(--font-mono); }
+
+/* ── SLIDE 8: GET STARTED ── */
+#slide-8 .content {
+    position: absolute;
+    left: 160px;
+    top: 100px;
+    right: 160px;
+}
+#slide-8 h2 { font-size: 72px; font-weight: 700; margin: 0 0 56px 0; }
+#slide-8 h2 span { color: var(--accent); }
+#slide-8 .setup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 48px;
+    max-width: 1560px;
+}
+#slide-8 .setup-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 36px 40px;
+}
+#slide-8 .step-num {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+#slide-8 .step-title {
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+#slide-8 .step-body {
+    font-size: 24px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+#slide-8 .step-code {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    color: var(--string);
+    background: var(--surface-2, #e8ecf4);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-top: 14px;
+    display: block;
+}
+#slide-8 .free-callout {
+    display: flex;
+    align-items: center;
+    gap: 48px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 10px;
+    padding: 28px 40px;
+    max-width: 1560px;
+}
+#slide-8 .free-badge {
+    font-family: var(--font-mono);
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+}
+#slide-8 .free-detail {
+    font-size: 28px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+#slide-8 .free-detail strong { color: var(--text-primary); }
+#slide-8 .engines-label {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 6px;
+}
+#slide-8 .engine-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+#slide-8 .engine-tag {
+    font-family: var(--font-mono);
+    font-size: 19px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 16px;
+    border-radius: 4px;
+}
+#slide-1 .terminal {
+    position: absolute;
+    right: 120px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 580px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    opacity: 0;
+    animation: fadeIn 0.8s ease 1s forwards;
+}
+#slide-1 .terminal-bar {
+    background: var(--code-titlebar);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+}
+#slide-1 .dot { width: 14px; height: 14px; border-radius: 50%; }
+#slide-1 .dot.r { background: #f47174; }
+#slide-1 .dot.y { background: #dcdcaa; }
+#slide-1 .dot.g { background: rgb(26, 108, 223); }
+#slide-1 .terminal-body {
+    padding: 28px;
+    font-family: var(--font-mono);
+    font-size: 21px;
+    line-height: 1.8;
+    color: var(--text-secondary);
+}
+#slide-1 .terminal-body .prompt { color: var(--accent); }
+#slide-1 .terminal-body .cmd { color: var(--text-primary); }
+#slide-1 .terminal-body .out { color: var(--text-dim); font-size: 18px; }
+#slide-1 .terminal-body .hi { color: var(--string); }
+
+/* ── SLIDE 2: PROBLEM + INSIGHT (merged) ── */
+#slide-2 .content {
+    position: absolute;
+    left: 160px;
+    top: 80px;
+    right: 160px;
+}
+#slide-2 .top-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 44px;
+    align-items: start;
+}
+#slide-2 h2 {
+    font-size: 64px;
+    font-weight: 700;
+    margin: 0 0 28px 0;
+    line-height: 1.1;
+}
+#slide-2 h2 .strike {
+    text-decoration: line-through;
+    color: var(--danger);
+    text-decoration-color: var(--danger);
+}
+#slide-2 h2 .eq { color: var(--text-dim); margin: 0 16px; font-weight: 300; }
+#slide-2 h2 .pop { color: var(--warning); }
+#slide-2 .callout-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--danger);
+    padding: 32px 40px;
+    border-radius: 8px;
+}
+#slide-2 .callout-box .quote {
+    font-size: 28px;
+    color: var(--text-primary);
+    line-height: 1.5;
+    font-style: italic;
+}
+#slide-2 .signals-header {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+#slide-2 .signal-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+#slide-2 .signal-item {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    padding: 22px 32px;
+}
+#slide-2 .signal-num {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--accent);
+    font-weight: 700;
+    min-width: 36px;
+}
+#slide-2 .signal-text {
+    font-size: 28px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+#slide-2 .signal-text .sub {
+    display: block;
+    font-size: 20px;
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-top: 4px;
+}
+
+/* ── SLIDE 3: FORMULA ── */
+#slide-3 .content {
+    position: absolute;
+    left: 160px;
+    top: 120px;
+    right: 160px;
+}
+#slide-3 h2 { font-size: 74px; font-weight: 700; margin: 0 0 64px 0; }
+#slide-3 h2 span { color: var(--accent); }
+#slide-3 .formula-block {
+    background: var(--surface);
+    border: 1px solid var(--accent-border);
+    border-radius: 10px;
+    padding: 48px 56px;
+    margin-bottom: 52px;
+    max-width: 1350px;
+}
+#slide-3 .formula-code {
+    font-family: var(--font-mono);
+    font-size: 40px;
+    color: var(--text-primary);
+}
+#slide-3 .formula-code .kw { color: var(--keyword); }
+#slide-3 .formula-code .var { color: var(--warning); }
+#slide-3 .formula-code .fn { color: var(--accent); }
+#slide-3 .formula-code .op { color: var(--text-secondary); }
+#slide-3 .term-list { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; }
+#slide-3 .term-row { display: flex; align-items: baseline; gap: 0; }
+#slide-3 .term-mono {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--warning);
+    min-width: 440px;
+    padding-right: 32px;
+}
+#slide-3 .term-desc { font-size: 28px; color: var(--text-secondary); line-height: 1.4; }
+#slide-3 .term-desc em { color: var(--text-primary); font-style: normal; font-weight: 500; }
+
+/* ── SLIDE 4: SCORE EXAMPLES ── */
+#slide-4 .content {
+    position: absolute;
+    left: 160px;
+    top: 100px;
+    right: 160px;
+}
+#slide-4 h2 { font-size: 74px; font-weight: 700; margin: 0 0 60px 0; }
+#slide-4 h2 span { color: var(--accent); }
+#slide-4 .example-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    max-width: 1500px;
+    margin-bottom: 44px;
+}
+#slide-4 .example-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 44px 48px;
+}
+#slide-4 .example-card.gem { border-top: 3px solid var(--accent); }
+#slide-4 .example-card.pop { border-top: 3px solid var(--text-dim); }
+#slide-4 .card-label {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+}
+#slide-4 .example-card.gem .card-label { color: var(--accent); }
+#slide-4 .example-card.pop .card-label { color: var(--text-dim); }
+#slide-4 .card-name { font-size: 36px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+#slide-4 .card-stats {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+}
+#slide-4 .card-math {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: var(--font-mono);
+    font-size: 22px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+#slide-4 .card-math .line { display: block; }
+#slide-4 .card-math .result { color: var(--text-primary); font-weight: 700; }
+#slide-4 .example-card.gem .card-math .result { color: var(--accent); }
+#slide-4 .verdict {
+    font-size: 26px;
+    font-weight: 500;
+    padding: 14px 20px;
+    border-radius: 6px;
+}
+#slide-4 .example-card.gem .verdict { background: var(--accent-dim); color: var(--accent); }
+#slide-4 .example-card.pop .verdict { background: rgba(255,255,255,0.04); color: var(--text-dim); }
+#slide-4 .bottom-line {
+    font-size: 32px;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 20px;
+    border-top: 1px solid var(--border);
+}
+#slide-4 .bottom-line strong { color: var(--text-primary); }
+
+/* ── SLIDE 5: WHY NOT OTHER APPROACHES ── */
+#slide-5 .content {
+    position: absolute;
+    left: 160px;
+    top: 100px;
+    right: 160px;
+}
+#slide-5 h2 { font-size: 68px; font-weight: 700; margin: 0 0 56px 0; }
+#slide-5 h2 span { color: var(--accent); }
+#slide-5 .alt-list { display: flex; flex-direction: column; gap: 28px; max-width: 1500px; }
+#slide-5 .alt-row {
+    display: grid;
+    grid-template-columns: 280px 1fr 1fr;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+#slide-5 .alt-name {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--warning);
+    background: rgba(220,220,170,0.07);
+    border-right: 1px solid var(--border);
+    padding: 28px 32px;
+    font-weight: 600;
+}
+#slide-5 .alt-what {
+    font-size: 26px;
+    color: var(--text-secondary);
+    padding: 28px 32px;
+    border-right: 1px solid var(--border);
+}
+#slide-5 .alt-problem {
+    font-size: 26px;
+    color: var(--danger);
+    padding: 28px 32px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+#slide-5 .alt-problem::before { content: '✗'; flex-shrink: 0; margin-top: 2px; }
+#slide-5 .winner-row {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    align-items: center;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+#slide-5 .winner-name {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--accent);
+    border-right: 1px solid var(--accent-border);
+    padding: 28px 32px;
+    font-weight: 700;
+}
+#slide-5 .winner-why {
+    font-size: 26px;
+    color: var(--text-primary);
+    padding: 28px 32px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+#slide-5 .winner-why::before { content: '✓'; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+
+/* ── SLIDE 6: SERPAPI ── */
+#slide-6 .content {
+    position: absolute;
+    left: 160px;
+    top: 120px;
+    right: 160px;
+}
+#slide-6 h2 { font-size: 68px; font-weight: 700; margin: 0 0 64px 0; }
+#slide-6 h2 span { color: var(--accent); }
+#slide-6 .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 1500px;
+    margin-bottom: 48px;
+}
+#slide-6 .compare-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 40px 44px;
+}
+#slide-6 .compare-col.bad { border-top: 3px solid var(--danger); }
+#slide-6 .compare-col.good { border-top: 3px solid var(--accent); }
+#slide-6 .col-label {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+}
+#slide-6 .compare-col.bad .col-label { color: var(--danger); }
+#slide-6 .compare-col.good .col-label { color: var(--accent); }
+#slide-6 .compare-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 18px; }
+#slide-6 .compare-list li {
+    font-size: 28px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    line-height: 1.4;
+}
+#slide-6 .compare-col.bad .compare-list li::before { content: '✗'; color: var(--danger); font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+#slide-6 .compare-col.good .compare-list li::before { content: '✓'; color: var(--accent); font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+#slide-6 .trust-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px 36px;
+    max-width: 1500px;
+}
+#slide-6 .trust-label {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 10px;
+}
+#slide-6 .trust-names { font-size: 24px; color: var(--text-secondary); line-height: 1.5; }
+#slide-6 .trust-names strong { color: var(--text-primary); font-weight: 500; }
+
+/* ── SLIDE 10: THE QUERY ── */
+#slide-10 .content {
+    position: absolute;
+    left: 160px;
+    top: 120px;
+    right: 160px;
+}
+#slide-10 h2 { font-size: 74px; font-weight: 700; margin: 0 0 24px 0; }
+#slide-10 h2 span { color: var(--accent); }
+#slide-10 .sub-head { font-size: 28px; color: var(--text-secondary); margin-bottom: 56px; }
+#slide-10 .code-window {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 1400px;
+}
+#slide-10 .code-titlebar {
+    background: var(--code-titlebar);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+}
+#slide-10 .code-dot { width: 13px; height: 13px; border-radius: 50%; }
+#slide-10 .code-dot.r { background: #f47174; opacity: 0.7; }
+#slide-10 .code-dot.y { background: #dcdcaa; opacity: 0.7; }
+#slide-10 .code-dot.g { background: #4ec9b0; opacity: 0.7; }
+#slide-10 .code-filename { margin-left: 12px; font-family: var(--font-mono); font-size: 18px; color: var(--text-dim); }
+#slide-10 .code-body {
+    padding: 40px 48px;
+    font-family: var(--font-mono);
+    font-size: 30px;
+    line-height: 1.9;
+    color: var(--text-primary);
+    white-space: pre;
+}
+#slide-10 .kw { color: var(--keyword); }
+#slide-10 .str { color: var(--string); }
+#slide-10 .var { color: var(--warning); }
+#slide-10 .fn { color: var(--accent); }
+#slide-10 .attr { color: #9cdcfe; }
+
+/* ── SLIDE 12: inline formula bar ── */
+#slide-12 .formula-inline {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    background: var(--surface);
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    padding: 18px 32px;
+    display: inline-block;
+    margin-bottom: 32px;
+    color: var(--text-primary);
+}
+#slide-12 .formula-inline .var { color: var(--warning); }
+#slide-12 .formula-inline .fn  { color: var(--accent); }
+#slide-12 .formula-inline .op  { color: var(--text-secondary); }
+
+/* ── CODE SLIDES (generic) ── */
+.code-slide .content {
+    position: absolute;
+    left: 160px;
+    top: 120px;
+    right: 160px;
+}
+.code-slide h2 { font-size: 74px; font-weight: 700; margin: 0 0 24px 0; }
+.code-slide h2 span { color: var(--accent); }
+.code-slide .sub-head { font-size: 28px; color: var(--text-secondary); margin-bottom: 40px; }
+.code-slide .code-window {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 1520px;
+}
+.code-slide .code-titlebar {
+    background: var(--code-titlebar);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+}
+.code-slide .code-dot { width: 13px; height: 13px; border-radius: 50%; }
+.code-slide .code-dot.r { background: #f47174; opacity: 0.7; }
+.code-slide .code-dot.y { background: #dcdcaa; opacity: 0.7; }
+.code-slide .code-dot.g { background: rgb(26, 108, 223); opacity: 0.7; }
+.code-slide .code-filename { margin-left: 12px; font-family: var(--font-mono); font-size: 18px; color: var(--text-dim); }
+.code-slide .code-body {
+    padding: 40px 48px;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    line-height: 1.2;
+    color: var(--text-primary);
+    white-space: pre;
+}
+.code-slide .kw  { color: var(--keyword); }
+.code-slide .str { color: var(--string); }
+.code-slide .var { color: var(--warning); }
+.code-slide .fn  { color: var(--accent); }
+.code-slide .cm  { color: var(--text-dim); font-style: italic; }
+.code-slide .attr { color: #9cdcfe; }
+.code-slide .num { color: #b5cea8; }
+.code-slide .tp  { color: #4ec9b0; }
+
+/* ── SLIDE 13: TREND MULTIPLIER ── */
+#slide-13 .content {
+    position: absolute;
+    left: 160px;
+    top: 120px;
+    right: 160px;
+}
+#slide-13 h2 { font-size: 74px; font-weight: 700; margin: 0 0 64px 0; }
+#slide-13 h2 span { color: var(--accent); }
+#slide-13 .signal-list { display: flex; flex-direction: column; gap: 28px; max-width: 1400px; }
+#slide-13 .signal-row {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+#slide-13 .signal-score {
+    font-family: var(--font-mono);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-right: 1px solid var(--accent-border);
+    padding: 28px 36px;
+    min-width: 140px;
+    text-align: center;
+}
+#slide-13 .signal-desc { padding: 28px 40px; font-size: 32px; color: var(--text-primary); line-height: 1.35; }
+#slide-13 .signal-desc .mono { font-family: var(--font-mono); color: var(--string); font-size: 28px; }
+#slide-13 .signal-desc .sub { display: block; font-size: 24px; color: var(--text-secondary); margin-top: 6px; }
+
+/* ── SLIDE 16: DEMO ── */
+#slide-16 .demo-content {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+#slide-16 .demo-label {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+}
+#slide-16 .demo-title { font-size: 110px; font-weight: 700; color: var(--text-primary); line-height: 1; margin-bottom: 48px; }
+#slide-16 .demo-title span { color: var(--accent); }
+#slide-16 .demo-cmd {
+    font-family: var(--font-mono);
+    font-size: 36px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 40px;
+    display: inline-block;
+}
+#slide-16 .demo-cmd .prompt { color: var(--accent); }
+#slide-16 .cursor {
+    display: inline-block;
+    width: 3px;
+    height: 34px;
+    background: var(--accent);
+    vertical-align: middle;
+    margin-left: 4px;
+    animation: blink 1s step-end infinite;
+}
+
+/* ── SLIDES 10-14: INDIVIDUAL USE CASES ── */
+.uc-slide .content {
+    position: absolute;
+    left: 160px;
+    top: 100px;
+    right: 160px;
+}
+.uc-slide .uc-engine {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+}
+.uc-slide h2 { font-size: 72px; font-weight: 700; margin: 0 0 48px 0; line-height: 1.1; }
+.uc-slide h2 span { color: var(--accent); }
+.uc-slide .uc-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    max-width: 1560px;
+}
+.uc-slide .uc-left { display: flex; flex-direction: column; gap: 24px; }
+.uc-slide .uc-bullets { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+.uc-slide .uc-bullets li {
+    font-size: 30px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    line-height: 1.4;
+}
+.uc-slide .uc-bullets li::before { content: '→'; color: var(--accent); font-family: var(--font-mono); flex-shrink: 0; }
+.uc-slide .uc-who {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--text-dim);
+    padding: 20px 28px;
+    border-radius: 0 8px 8px 0;
+    font-size: 26px;
+    color: var(--text-secondary);
+}
+.uc-slide .uc-who strong { color: var(--text-primary); }
+.uc-slide .code-window {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.uc-slide .code-titlebar {
+    background: var(--code-titlebar);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.uc-slide .code-dot { width: 12px; height: 12px; border-radius: 50%; }
+.uc-slide .code-dot.r { background: #f47174; opacity: 0.7; }
+.uc-slide .code-dot.y { background: #dcdcaa; opacity: 0.7; }
+.uc-slide .code-dot.g { background: #4ec9b0; opacity: 0.7; }
+.uc-slide .code-filename { margin-left: 10px; font-family: var(--font-mono); font-size: 17px; color: var(--text-dim); }
+.uc-slide .code-body {
+    padding: 32px 36px;
+    font-family: var(--font-mono);
+    font-size: 26px;
+    line-height: 1.85;
+    color: var(--text-primary);
+    white-space: pre;
+}
+.uc-slide .kw { color: var(--keyword); }
+.uc-slide .str { color: var(--string); }
+.uc-slide .var { color: var(--warning); }
+.uc-slide .fn { color: var(--accent); }
+.uc-slide .cm { color: var(--text-dim); font-style: italic; }
+.uc-slide .attr { color: #9cdcfe; }
+
+/* ── SLIDE 22: CTA ── */
+#slide-23 .cta-content {
+    position: absolute;
+    left: 160px;
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 1200px;
+}
+#slide-23 .cta-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+}
+#slide-23 .cta-title { font-size: 100px; font-weight: 700; line-height: 1.1; margin: 0 0 60px 0; }
+#slide-23 .cta-title span { color: var(--accent); }
+#slide-23 .cta-list { list-style: none; padding: 0; margin: 0 0 60px 0; display: flex; flex-direction: column; gap: 24px; }
+#slide-23 .cta-list li { font-size: 38px; color: var(--text-secondary); display: flex; align-items: center; gap: 20px; }
+#slide-23 .cta-list li::before { content: '→'; color: var(--accent); font-family: var(--font-mono); font-size: 32px; }
+#slide-23 .cta-gh { font-family: var(--font-mono); font-size: 28px; color: var(--text-dim); letter-spacing: 0.04em; }
+
+/* ── SECTION BREAK SLIDES — same layout as slide 16 ── */
+.section-break .demo-content {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+.section-break .demo-label {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+}
+.section-break .demo-title { font-size: 110px; font-weight: 700; color: var(--text-primary); line-height: 1; margin-bottom: 0; }
+.section-break .demo-title span { color: var(--accent); }
+
+/* ── THEME TOGGLE ── */
+#theme-toggle {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 3000;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+}
+#theme-toggle:hover { color: var(--accent); border-color: var(--accent-border); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+.slide.active .accent-bar { animation: fadeIn 0.4s ease 0.1s both; }
+.slide.active .section-label { animation: fadeIn 0.4s ease 0.15s both; }
+.slide.active .content h2,
+.slide.active .demo-content,
+.slide.active .sub-head,
+.slide.active .callout-box,
+.slide.active .signal-grid,
+.slide.active .formula-block,
+.slide.active .term-list,
+.slide.active .compare-grid,
+.slide.active .trust-bar,
+.slide.active .code-window,
+.slide.active .signal-list,
+.slide.active .example-grid,
+.slide.active .alt-list,
+.slide.active .uc-engine,
+.slide.active .uc-body,
+.slide.active .top-row,
+.slide.active .cta-list,
+.slide.active .cta-gh,
+.slide.active .sub-head { animation: fadeUp 0.5s ease 0.4s both; }
+.slide.active .cta-eyebrow { animation: fadeUp 0.4s ease 0.1s both; }
+.slide.active .cta-title { animation: fadeUp 0.5s ease 0.25s both; }
+
+.progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+    z-index: 2000;
+}
+.slide-counter {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: rgba(255,255,255,0.25);
+    z-index: 2000;
+    letter-spacing: 0.1em;
+}
+
+</style>
+</head>
+<body>
+
+<button id="theme-toggle" aria-label="Toggle theme">◑ dark</button>
+
+<div class="deck-viewport">
+  <div class="deck-stage" id="stage">
+
+    <!-- SLIDE 1: TITLE -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-inner">
+        <div class="title-content">
+          <div class="eyebrow">// youtube.com / bhavaniravi</div>
+          <h1 class="main-title">Find Restaurants<br> <em>Before</em><br>They Go Viral</h1>
+          <div class="subtitle-row">
+            <span class="tech-tag">SerpAPI</span>
+            <span class="separator">+</span>
+            <span class="tech-tag">Python</span>
+            <span class="separator">+</span>
+            <span class="tech-tag">Streamlit</span>
+          </div>
+        </div>
+        <div class="collab-bar">
+          <div class="collab-logo"><span class="accent">Serp</span>API</div>
+          <div class="collab-x">×</div>
+          <div class="collab-logo">the<span class="accent">learning</span>.dev</div>
+        </div>
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+          </div>
+          <div class="terminal-body">
+            <div><span class="prompt">$</span> <span class="cmd">uv run streamlit run app.py</span></div>
+            <div class="out">&nbsp;</div>
+            <div><span class="hi">#1</span> Eem Thai  <span class="prompt">4.9★</span>  42 reviews</div>
+            <div><span class="hi">    score: 47.83  🔥 newly opened</span></div>
+            <div class="out">&nbsp;</div>
+            <div><span class="hi">#2</span> Salty Sow  <span class="prompt">4.8★</span>  61 reviews</div>
+            <div><span class="hi">    score: 44.21</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: PROBLEM + INSIGHT (merged) -->
+    <div class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">01 / problem</div>
+        <div class="content">
+          <div class="top-row">
+            <div>
+              <h2><span>"Best Rated"</span><span class="eq">!=</span><span class="pop">Most Popular</span></h2>
+              <div class="callout-box">
+                <div class="quote">"A 4.3 with 4,000 reviews is famous.<br>A 4.8 with 40 reviews is <em>interesting</em>."</div>
+              </div>
+            </div>
+            <div>
+              <div class="signals-header">// the real signal</div>
+              <div class="signal-grid">
+                <div class="signal-item">
+                  <div class="signal-num">01</div>
+                  <div class="signal-text">High rating
+                    <span class="sub">Quality signal — the place is genuinely good</span>
+                  </div>
+                </div>
+                <div class="signal-item">
+                  <div class="signal-num">02</div>
+                  <div class="signal-text">Low review count
+                    <span class="sub">Undiscovered — the algorithm hasn't caught it yet</span>
+                  </div>
+                </div>
+                <div class="signal-item">
+                  <div class="signal-num">03</div>
+                  <div class="signal-text">Recency indicators
+                    <span class="sub">Newly opened, high photo activity, trending labels</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: THE FORMULA -->
+    <div class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">02 / formula</div>
+        <div class="content">
+          <h2>Scoring for <span>Pre-Viral</span> Potential</h2>
+          <div class="formula-block">
+            <div class="formula-code">
+              <span class="var">score</span><span class="op"> = </span>
+              <span class="op">(</span><span class="var">avg_rating</span><span class="op"> × </span><span class="fn">10</span><span class="op">)</span>
+              <span class="op"> − </span><span class="fn">log</span><span class="op">(</span><span class="var">review_count</span><span class="op"> + </span><span class="fn">1</span><span class="op">)</span>
+              <span class="op"> + </span><span class="var">trend_multiplier</span>
+            </div>
+          </div>
+          <div class="term-list">
+            <div class="term-row">
+              <div class="term-mono">avg_rating × 10</div>
+              <div class="term-desc">Rewards <em>quality</em> — 4.8 beats 4.3</div>
+            </div>
+            <div class="term-row">
+              <div class="term-mono">− log(review_count + 1)</div>
+              <div class="term-desc"><em>Penalizes popularity</em> — 2000 reviews loses more than 50</div>
+            </div>
+            <div class="term-row">
+              <div class="term-mono">+ trend_multiplier</div>
+              <div class="term-desc">Adds back for <em>recency signals</em> from the SerpAPI response</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: SCORE EXAMPLES -->
+    <div class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">03 / examples</div>
+        <div class="content">
+          <h2>The <span>Math in Action</span></h2>
+          <div class="example-grid">
+            <div class="example-card gem">
+              <div class="card-label">Hidden Gem</div>
+              <div class="card-name">Eem Thai Kitchen</div>
+              <div class="card-stats">4.9★ · 42 reviews · newly opened</div>
+              <div class="card-math">
+                <span class="line">(4.9 × 10) = 49.0</span>
+                <span class="line">− log(42 + 1) = − 3.76</span>
+                <span class="line">+ trend (newly opened) = +2.0</span>
+                <span class="line result">= 47.24</span>
+              </div>
+              <div class="verdict">Strong pre-viral signal</div>
+            </div>
+            <div class="example-card pop">
+              <div class="card-label">Already Popular</div>
+              <div class="card-name">Franklin Barbecue</div>
+              <div class="card-stats">4.6★ · 2,400 reviews</div>
+              <div class="card-math">
+                <span class="line">(4.6 × 10) = 46.0</span>
+                <span class="line">− log(2400 + 1) = − 7.78</span>
+                <span class="line">+ trend = 0.0</span>
+                <span class="line result">= 38.22</span>
+              </div>
+              <div class="verdict">Known quantity — skip it</div>
+            </div>
+          </div>
+          <div class="bottom-line">Hidden gem wins by <strong>9 points</strong>. That's the algorithm working as intended.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: WHY NOT OTHER APPROACHES -->
+    <div class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">04 / design decisions</div>
+        <div class="content">
+          <h2>Why Not <span>Other Approaches?</span></h2>
+          <div class="alt-list">
+            <div class="alt-row">
+              <div class="alt-name">Simple ratio<br><small style="font-size:18px;opacity:0.6">rating / reviews</small></div>
+              <div class="alt-what">Divide rating by review count to penalize popular places</div>
+              <div class="alt-problem">A place with 1 review and 5.0★ scores highest. Pure noise.</div>
+            </div>
+            <div class="alt-row">
+              <div class="alt-name">Bayesian avg<br><small style="font-size:18px;opacity:0.6">prior + observations</small></div>
+              <div class="alt-what">Smooth ratings toward a global mean using a prior</div>
+              <div class="alt-problem">Pulls low-volume places toward the mean — buries the gems we're looking for.</div>
+            </div>
+            <div class="alt-row">
+              <div class="alt-name">Wilson score<br><small style="font-size:18px;opacity:0.6">confidence interval</small></div>
+              <div class="alt-what">Lower bound of confidence interval on positive rate</div>
+              <div class="alt-problem">Designed for binary thumbs up/down — not a 5-star scale.</div>
+            </div>
+            <div class="winner-row">
+              <div class="winner-name">Log dampener<br><small style="font-size:18px;opacity:0.7">our approach</small></div>
+              <div class="winner-why">Grows fast at low counts, flattens at high volume. Intuitive, tunable, and maps directly to SerpAPI fields.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: SERPAPI -->
+    <div class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">05 / api</div>
+        <div class="content">
+          <h2>Why <span>SerpAPI</span>, Not Scraping</h2>
+          <div class="compare-grid">
+            <div class="compare-col bad">
+              <div class="col-label">Scraping</div>
+              <ul class="compare-list">
+                <li>Breaks when Google changes HTML</li>
+                <li>IP bans and rate limits</li>
+                <li>Maintenance overhead</li>
+                <li>No structured schema</li>
+              </ul>
+            </div>
+            <div class="compare-col good">
+              <div class="col-label">SerpAPI</div>
+              <ul class="compare-list">
+                <li>Clean, structured JSON</li>
+                <li>100% uptime SLA</li>
+                <li>Real API — not a scraper wrapper</li>
+                <li>Google Maps, Shopping, News, and more</li>
+              </ul>
+            </div>
+          </div>
+          <div class="trust-bar">
+            <div class="trust-label">Trusted in production by</div>
+            <div class="trust-names">
+              <strong>Nvidia</strong> · <strong>Shopify</strong> · <strong>Perplexity</strong> · <strong>Adobe</strong> · <strong>Samsung</strong> · <strong>KPMG</strong> · <strong>Grubhub</strong> · <strong>Uber</strong> · <strong>Morgan Stanley</strong> · <strong>Thomson Reuters</strong> · <strong>Experian</strong> · <strong>United Nations</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: SECTION BREAK — SETUP SERPAPI -->
+    <div class="slide section-break" id="slide-7">
+      <div class="slide-inner">
+        <div class="demo-content">
+          <div class="demo-label">// setup</div>
+          <div class="demo-title">Get the<br><span>API Key</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: GET STARTED WITH SERPAPI -->
+    <div class="slide" id="slide-8">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">06 / setup</div>
+        <div class="content">
+          <h2>Get Started with <span>SerpAPI</span></h2>
+          <div class="setup-grid">
+            <div class="setup-step">
+              <div class="step-num">Step 01</div>
+              <div class="step-title">Create a free account</div>
+              <div class="step-body">Go to serpapi.com and sign up.<br>No credit card required.</div>
+              <span class="step-code">serpapi.com/users/sign_up</span>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">Step 02</div>
+              <div class="step-title">Copy your API key</div>
+              <div class="step-body">Dashboard → <strong style="color:var(--text-primary)">API Key</strong><br>One key, all engines.</div>
+              <span class="step-code">sk_live_xxxxxxxxxxxxxxxx</span>
+            </div>
+            <div class="setup-step">
+              <div class="step-num">Step 03</div>
+              <div class="step-title">Add to your project</div>
+              <div class="step-body">Drop it in a <strong style="color:var(--text-primary)">.env</strong> file,<br>never hardcode it.</div>
+              <span class="step-code">SERPAPI_KEY=sk_live_...</span>
+            </div>
+          </div>
+          <div class="free-callout">
+            <div class="free-badge">100 / mo</div>
+            <div class="free-detail">
+              <strong>Free tier — no credit card needed.<br/></strong> 100 searches/month is enough to build and demo this entire project.<br>
+              <div class="engines-label">Available engines</div>
+              <div class="engine-tags">
+                <span class="engine-tag">Google Maps</span>
+                <span class="engine-tag">Google Search</span>
+                <span class="engine-tag">Google Shopping</span>
+                <span class="engine-tag">YouTube</span>
+                <span class="engine-tag">Google News</span>
+                <span class="engine-tag">Bing</span>
+                <span class="engine-tag">Google Jobs</span>
+                <span class="engine-tag">Google Finance</span>
+                <span class="engine-tag">+ more</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: SECTION BREAK — GETTING DATA -->
+    <div class="slide section-break" id="slide-9">
+      <div class="slide-inner">
+        <div class="demo-content">
+          <div class="demo-label">// fetch</div>
+          <div class="demo-title">Use<span>SerpAPI</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: THE QUERY -->
+    <div class="slide" id="slide-10">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">06 / code</div>
+        <div class="content">
+          <h2>SerpAPI <span>Python SDK</span></h2>
+          <p class="sub-head">Google Maps Local Results → structured JSON</p>
+          <div class="code-window">
+            <div class="code-titlebar">
+              <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+              <span class="code-filename">serpapi_client.py</span>
+            </div>
+            <div class="code-body"><span class="kw">import</span> <span class="var">serpapi</span><br/><span class="var">client</span> <span class="kw">=</span> <span class="fn">serpapi</span><span class="kw">.</span><span class="fn">Client</span>(<span class="attr">api_key</span><span class="kw">=</span><span class="var">SERPAPI_KEY</span>)
+
+<span class="var">results</span> <span class="kw">=</span> <span class="var">client</span><span class="kw">.</span><span class="fn">search</span>(
+    <span class="attr">engine</span><span class="kw">=</span><span class="str">"google_maps"</span><span class="kw">,</span>
+    <span class="attr">q</span><span class="kw">=</span><span class="fn">f</span><span class="str">"</span><span class="kw">{</span><span class="var">cuisine</span><span class="kw">}</span><span class="str"> restaurants in </span><span class="kw">{</span><span class="var">city</span><span class="kw">}</span><span class="str">"</span><span class="kw">,</span>
+    <span class="attr">type</span><span class="kw">=</span><span class="str">"search"</span><span class="kw">,</span>
+)
+<span class="var">places</span> <span class="kw">=</span> <span class="var">results</span>[<span class="str">"local_results"</span>]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: SECTION BREAK — CODE THE APP -->
+    <div class="slide section-break" id="slide-11">
+      <div class="slide-inner">
+        <div class="demo-content">
+          <div class="demo-label">// build</div>
+          <div class="demo-title">Build the<span>Scorer</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: COMPUTE SCORE -->
+    <div class="slide code-slide" id="slide-12">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">07 / scorer</div>
+        <div class="content">
+          <h2>The <span>Scoring Function</span></h2>
+          <div class="formula-inline">
+            <span class="var">score</span><span class="op"> = </span><span class="op">(</span><span class="var">rating</span><span class="op"> × </span><span class="fn">10</span><span class="op">) − </span><span class="fn">log</span><span class="op">(</span><span class="var">review_count</span><span class="op"> + </span><span class="fn">1</span><span class="op">) + </span><span class="var">trend_multiplier</span>
+          </div>
+          <div class="code-window">
+            <div class="code-titlebar">
+              <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+              <span class="code-filename">scorer.py</span>
+            </div>
+            <div class="code-body"><span class="kw">import</span> <span class="var">math</span>
+
+<span class="kw">def</span> <span class="fn">compute_score</span>(<span class="var">place</span>: <span class="tp">dict</span>) -> <span class="tp">float</span>:
+    <span class="var">rating</span>       <span class="kw">=</span> <span class="var">place</span>.<span class="fn">get</span>(<span class="str">"rating"</span>, <span class="num">0</span>) <span class="kw">or</span> <span class="num">0</span>
+    <span class="var">review_count</span> <span class="kw">=</span> <span class="var">place</span>.<span class="fn">get</span>(<span class="str">"reviews"</span>, <span class="num">0</span>) <span class="kw">or</span> <span class="num">0</span>
+    <span class="var">trend</span>        <span class="kw">=</span> <span class="fn">_trend_multiplier</span>(<span class="var">place</span>)
+
+    <span class="kw">return</span> <span class="fn">round</span>(
+        (<span class="var">rating</span> <span class="kw">*</span> <span class="num">10</span>) <span class="kw">-</span> <span class="var">math</span>.<span class="fn">log</span>(<span class="var">review_count</span> <span class="kw">+</span> <span class="num">1</span>) <span class="kw">+</span> <span class="var">trend</span>,
+        <span class="num">2</span>
+    )</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: TREND MULTIPLIER -->
+    <div class="slide" id="slide-13">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">07 / scorer</div>
+        <div class="content">
+          <h2>The <span>Trend Multiplier</span></h2>
+          <div class="signal-list">
+            <div class="signal-row">
+              <div class="signal-score">+2.0</div>
+              <div class="signal-desc">
+                <span class="mono">"Newly opened"</span> in the hours field
+                <span class="sub">Strongest signal — early ratings on a brand-new place</span>
+              </div>
+            </div>
+            <div class="signal-row">
+              <div class="signal-score">+1.0</div>
+              <div class="signal-desc">
+                <span class="mono">"Popular"</span> label in extensions
+                <span class="sub">Google's own trending flag — surfaces in the API response</span>
+              </div>
+            </div>
+            <div class="signal-row">
+              <div class="signal-score">+0.5</div>
+              <div class="signal-desc">
+                High photo-to-review ratio
+                <span class="sub">People are visiting and photographing before they write reviews</span>
+              </div>
+            </div>
+            <div class="signal-row">
+              <div class="signal-score">+0.5</div>
+              <div class="signal-desc">
+                Budget price (<span class="mono">$</span> or <span class="mono">$$</span>) with 4.5+ rating
+                <span class="sub">Hidden gems are disproportionately cheap</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: TREND MULTIPLIER CODE -->
+    <div class="slide code-slide" id="slide-14">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">07 / scorer</div>
+        <div class="content">
+          <h2>The <span>Trend Multiplier</span> — Implementation</h2>
+          <p class="sub-head">SerpAPI fields → trend score</p>
+          <div class="code-window">
+            <div class="code-titlebar">
+              <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+              <span class="code-filename">scorer.py</span>
+            </div>
+            <div class="code-body"><span class="kw">def</span> <span class="fn">_trend_multiplier</span>(<span class="var">place</span>: <span class="tp">dict</span>) -> <span class="tp">float</span>:
+    <span class="var">score</span> <span class="kw">=</span> <span class="num">0.0</span>
+    <span class="var">review_count</span> <span class="kw">=</span> <span class="var">place</span>.<span class="fn">get</span>(<span class="str">"reviews"</span>, <span class="num">0</span>) <span class="kw">or</span> <span class="num">0</span>
+
+    <span class="kw">if</span> <span class="num">10</span> <span class="kw">&lt;=</span> <span class="var">review_count</span> <span class="kw">&lt;=</span> <span class="num">100</span>:   <span class="cm"># early traction sweet spot</span>
+        <span class="var">score</span> <span class="kw">+=</span> <span class="num">5.0</span>
+    <span class="kw">elif</span> <span class="var">review_count</span> <span class="kw">&lt;</span> <span class="num">10</span>:           <span class="cm"># too new — lower confidence</span>
+        <span class="var">score</span> <span class="kw">+=</span> <span class="num">2.0</span>
+
+    <span class="kw">if</span> <span class="var">place</span>.<span class="fn">get</span>(<span class="str">"owner_answer"</span>):      <span class="cm"># active owner = growing business</span>
+        <span class="var">score</span> <span class="kw">+=</span> <span class="num">3.0</span>
+
+    <span class="kw">if</span> <span class="var">place</span>.<span class="fn">get</span>(<span class="str">"hours"</span>) <span class="kw">and</span> <span class="str">"Opens"</span> <span class="kw">in</span> <span class="fn">str</span>(<span class="var">place</span>.<span class="fn">get</span>(<span class="str">"hours"</span>, <span class="str">""</span>)):
+        <span class="var">score</span> <span class="kw">+=</span> <span class="num">1.0</span>                  <span class="cm"># recently claimed listing</span>
+
+    <span class="kw">if not</span> <span class="var">place</span>.<span class="fn">get</span>(<span class="str">"price"</span>):
+        <span class="var">score</span> <span class="kw">-=</span> <span class="num">1.0</span>                  <span class="cm"># incomplete listing — penalize</span>
+
+    <span class="kw">return</span> <span class="var">score</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: APP WIRING -->
+    <div class="slide code-slide" id="slide-15">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">08 / app</div>
+        <div class="content">
+          <h2>Wiring It <span>Together</span></h2>
+          <p class="sub-head">fetch → score → display</p>
+          <div class="code-window">
+            <div class="code-titlebar">
+              <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+              <span class="code-filename">app.py</span>
+            </div>
+            <div class="code-body"><span class="cm"># 1. fetch from SerpAPI</span>
+<span class="var">raw</span> <span class="kw">=</span> <span class="fn">get_local_restaurants</span>(<span class="var">city</span>, <span class="var">cuisine</span>)
+
+<span class="cm"># 2. score every result</span>
+<span class="var">df</span> <span class="kw">=</span> <span class="fn">build_dataframe</span>(<span class="var">raw</span>)          <span class="cm"># applies compute_score() on each row</span>
+
+<span class="cm"># 3. color-code and display</span>
+<span class="kw">def</span> <span class="fn">highlight_score</span>(<span class="var">val</span>):
+    <span class="kw">if</span> <span class="var">val</span> <span class="kw">&gt;=</span> <span class="num">40</span>: <span class="kw">return</span> <span class="str">"background: #d4edda"</span>  <span class="cm"># green — strong gem</span>
+    <span class="kw">if</span> <span class="var">val</span> <span class="kw">&gt;=</span> <span class="num">35</span>: <span class="kw">return</span> <span class="str">"background: #fff3cd"</span>  <span class="cm"># yellow — worth a look</span>
+    <span class="kw">return</span> <span class="str">""</span>
+
+<span class="var">styled</span> <span class="kw">=</span> <span class="var">df</span>.<span class="fn">style</span>.<span class="fn">map</span>(<span class="fn">highlight_score</span>, <span class="attr">subset</span><span class="kw">=</span>[<span class="str">"Score"</span>])
+<span class="var">st</span>.<span class="fn">dataframe</span>(<span class="var">styled</span>, <span class="attr">use_container_width</span><span class="kw">=True</span>)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 16: DEMO -->
+    <div class="slide" id="slide-16">
+      <div class="slide-inner">
+        <div class="demo-content">
+          <div class="demo-label">// live demo</div>
+          <div class="demo-title">See It <span>Run</span></div>
+          <div class="demo-cmd">
+            <span class="prompt">$</span> uv run streamlit run code/app.py<span class="cursor"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 17: SECTION BREAK — OTHER USE CASES -->
+    <div class="slide section-break" id="slide-17">
+      <div class="slide-inner">
+        <div class="demo-content">
+          <div class="demo-label">// what next?</div>
+          <div class="demo-title">Other <span>Usecases</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 18: USE CASE — PRICE MONITORING -->
+    <div class="slide uc-slide" id="slide-18">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">08 / what else</div>
+        <div class="content">
+          <div class="uc-engine">engine: google_shopping</div>
+          <h2>Price <span>Monitoring Bot</span></h2>
+          <div class="uc-body">
+            <div class="uc-left">
+              <ul class="uc-bullets">
+                <li>Track competitor prices on Amazon, Walmart, Target in real-time</li>
+                <li>Structured response: price, seller, availability — one query</li>
+                <li>Slack alert when a competitor drops below your price point</li>
+              </ul>
+              <div class="uc-who">Used by <strong>e-commerce ops teams, pricing analysts, dropshippers</strong>. This is a product companies pay for monthly.</div>
+            </div>
+            <div class="code-window">
+              <div class="code-titlebar">
+                <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+                <span class="code-filename">price_monitor.py</span>
+              </div>
+              <div class="code-body"><span class="var">results</span> <span class="kw">=</span> <span class="var">client</span><span class="kw">.</span><span class="fn">search</span>(
+    <span class="attr">engine</span><span class="kw">=</span><span class="str">"google_shopping"</span><span class="kw">,</span>
+    <span class="attr">q</span><span class="kw">=</span><span class="str">"Sony WH-1000XM5"</span><span class="kw">,</span>
+    <span class="attr">gl</span><span class="kw">=</span><span class="str">"us"</span><span class="kw">,</span>
+)
+<span class="cm"># returns: price, seller, rating, delivery</span>
+<span class="kw">for</span> <span class="var">item</span> <span class="kw">in</span> <span class="var">results</span>[<span class="str">"shopping_results"</span>]:
+    <span class="kw">if</span> <span class="var">item</span>[<span class="str">"price"</span>] <span class="kw">&lt;</span> <span class="var">YOUR_PRICE</span>:
+        <span class="fn">alert_slack</span>(<span class="var">item</span>)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: USE CASE — AI NEWS MONITOR -->
+    <div class="slide uc-slide" id="slide-19">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">08 / what else</div>
+        <div class="content">
+          <div class="uc-engine">engine: google_news</div>
+          <h2>AI-Grounded <span>News Monitor</span></h2>
+          <div class="uc-body">
+            <div class="uc-left">
+              <ul class="uc-bullets">
+                <li>Fetch live news via SerpAPI → pipe into an LLM for summaries</li>
+                <li>Model gets current data, not training knowledge — no hallucinations</li>
+                <li>Track brand mentions, competitor moves, industry signals</li>
+              </ul>
+              <div class="uc-who"><strong>Perplexity</strong> does this at scale. SerpAPI is literally in their customer list. You can build a smaller version in an afternoon.</div>
+            </div>
+            <div class="code-window">
+              <div class="code-titlebar">
+                <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+                <span class="code-filename">news_monitor.py</span>
+              </div>
+              <div class="code-body"><span class="var">news</span> <span class="kw">=</span> <span class="var">client</span><span class="kw">.</span><span class="fn">search</span>(
+    <span class="attr">engine</span><span class="kw">=</span><span class="str">"google_news"</span><span class="kw">,</span>
+    <span class="attr">q</span><span class="kw">=</span><span class="str">"OpenAI competitor"</span><span class="kw">,</span>
+    <span class="attr">gl</span><span class="kw">=</span><span class="str">"us"</span><span class="kw">,</span>
+)
+<span class="var">headlines</span> <span class="kw">=</span> [<span class="var">r</span>[<span class="str">"title"</span>] <span class="kw">for</span> <span class="var">r</span> <span class="kw">in</span> <span class="var">news</span>[<span class="str">"news_results"</span>]]
+<span class="cm"># feed headlines to LLM → grounded summary</span>
+<span class="fn">summarize</span>(<span class="var">headlines</span>)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 16: USE CASE — BACKGROUND CHECK -->
+    <div class="slide uc-slide" id="slide-20">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">08 / what else</div>
+        <div class="content">
+          <div class="uc-engine">engine: google</div>
+          <h2>Background Check <span>Automation</span></h2>
+          <div class="uc-body">
+            <div class="uc-left">
+              <ul class="uc-bullets">
+                <li>Pull public records, news mentions, and entity info programmatically</li>
+                <li>Feed into a compliance workflow — flag risks automatically</li>
+                <li>Replaces hours of manual search for each entity</li>
+              </ul>
+              <div class="uc-who">Used by <strong>banks, law firms, compliance teams</strong>. Morgan Stanley and Thomson Reuters are both on SerpAPI's customer list for exactly this.</div>
+            </div>
+            <div class="code-window">
+              <div class="code-titlebar">
+                <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+                <span class="code-filename">entity_check.py</span>
+              </div>
+              <div class="code-body"><span class="var">results</span> <span class="kw">=</span> <span class="var">client</span><span class="kw">.</span><span class="fn">search</span>(
+    <span class="attr">engine</span><span class="kw">=</span><span class="str">"google"</span><span class="kw">,</span>
+    <span class="attr">q</span><span class="kw">=</span><span class="fn">f</span><span class="str">"{entity} lawsuit OR fraud OR penalty"</span><span class="kw">,</span>
+    <span class="attr">num</span><span class="kw">=</span><span class="fn">20</span><span class="kw">,</span>
+)
+<span class="cm"># organic_results + knowledge_graph</span>
+<span class="cm"># → score risk, flag for review</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 16: USE CASE — LOCAL SEO TRACKER -->
+    <div class="slide uc-slide" id="slide-21">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">08 / what else</div>
+        <div class="content">
+          <div class="uc-engine">engine: google_maps</div>
+          <h2>Local SEO <span>Rank Tracker</span></h2>
+          <div class="uc-body">
+            <div class="uc-left">
+              <ul class="uc-bullets">
+                <li>Query the same search from multiple cities to track your position in the local pack</li>
+                <li>Store results over time — visualize rank trends per location</li>
+                <li>Same API we used in this project, different query pattern</li>
+              </ul>
+              <div class="uc-who">Every <strong>local business and marketing agency</strong> would pay for this. BrightLocal charges $39/mo for it. You can build it in a weekend.</div>
+            </div>
+            <div class="code-window">
+              <div class="code-titlebar">
+                <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+                <span class="code-filename">rank_tracker.py</span>
+              </div>
+              <div class="code-body"><span class="kw">for</span> <span class="var">city</span> <span class="kw">in</span> <span class="var">target_cities</span>:
+    <span class="var">results</span> <span class="kw">=</span> <span class="var">client</span><span class="kw">.</span><span class="fn">search</span>(
+        <span class="attr">engine</span><span class="kw">=</span><span class="str">"google_maps"</span><span class="kw">,</span>
+        <span class="attr">q</span><span class="kw">=</span><span class="fn">f</span><span class="str">"coffee shop in {city}"</span><span class="kw">,</span>
+        <span class="attr">type</span><span class="kw">=</span><span class="str">"search"</span><span class="kw">,</span>
+    )
+    <span class="fn">store_rank</span>(<span class="var">city</span><span class="kw">,</span> <span class="fn">find_position</span>(<span class="var">MY_BUSINESS</span><span class="kw">,</span> <span class="var">results</span>))</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 17: USE CASE — E-COMMERCE RESEARCHER -->
+    <div class="slide uc-slide" id="slide-22">
+      <div class="slide-inner">
+        <div class="accent-bar"></div>
+        <div class="section-label">08 / what else</div>
+        <div class="content">
+          <div class="uc-engine">engine: google_shopping + google</div>
+          <h2>E-Commerce <span>Product Researcher</span></h2>
+          <div class="uc-body">
+            <div class="uc-left">
+              <ul class="uc-bullets">
+                <li>Extract ratings, pricing, and review count across platforms before sourcing inventory</li>
+                <li>Cross-reference Google Shopping results with organic review coverage</li>
+                <li>Validate product-market fit before placing orders — not after</li>
+              </ul>
+              <div class="uc-who">Used by <strong>Amazon sellers, operators, dropshippers</strong>. Sourcing a product that nobody's reviewing is a fast way to lose money.</div>
+            </div>
+            <div class="code-window">
+              <div class="code-titlebar">
+                <div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div>
+                <span class="code-filename">product_research.py</span>
+              </div>
+              <div class="code-body"><span class="var">shopping</span> <span class="kw">=</span> <span class="var">client</span><span class="kw">.</span><span class="fn">search</span>(
+    <span class="attr">engine</span><span class="kw">=</span><span class="str">"google_shopping"</span><span class="kw">,</span>
+    <span class="attr">q</span><span class="kw">=</span><span class="var">product_name</span><span class="kw">,</span>
+)
+<span class="cm"># price range, rating distribution, top sellers</span>
+<span class="var">organic</span> <span class="kw">=</span> <span class="var">client</span><span class="kw">.</span><span class="fn">search</span>(
+    <span class="attr">engine</span><span class="kw">=</span><span class="str">"google"</span><span class="kw">,</span>
+    <span class="attr">q</span><span class="kw">=</span><span class="fn">f</span><span class="str">"{product_name} review"</span><span class="kw">,</span>
+)
+<span class="cm"># review coverage = demand signal</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 18: CTA -->
+    <div class="slide" id="slide-23">
+      <div class="slide-inner">
+        <div class="cta-content">
+          <h2 class="cta-title">Code is on<br><span>GitHub</span></h2>
+          <ul class="cta-list">
+            <li>Link in the description</li>
+            <li>Subscribe for more data tools + API patterns</li>
+          </ul>
+          <div class="cta-gh"><a href="https://github.com/thelearningdev/serpapi-tutorial">https://github.com/thelearningdev/serpapi-tutorial</a></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="slide-counter" id="counter">1 / 18</div>
+<div class="progress-bar" id="progress"></div>
+
+<script>
+(function () {
+    "use strict";
+    const TOTAL = 23;
+    let current = 1;
+    const stage = document.getElementById("stage");
+    const counter = document.getElementById("counter");
+    const progress = document.getElementById("progress");
+
+    function scaleStage() {
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const scale = Math.min(vw / 1920, vh / 1080);
+        const tx = (vw - 1920 * scale) / 2;
+        const ty = (vh - 1080 * scale) / 2;
+        stage.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    }
+    function goTo(n) {
+        if (n < 1 || n > TOTAL) return;
+        document.getElementById("slide-" + current).classList.remove("active");
+        current = n;
+        document.getElementById("slide-" + current).classList.add("active");
+        counter.textContent = current + " / " + TOTAL;
+        progress.style.width = (current / TOTAL * 100) + "%";
+        location.hash = n;
+    }
+    function next() { goTo(current + 1); }
+    function prev() { goTo(current - 1); }
+
+    document.addEventListener("keydown", function (e) {
+        switch (e.key) {
+            case "ArrowRight": case "ArrowDown": case " ": e.preventDefault(); next(); break;
+            case "ArrowLeft": case "ArrowUp": e.preventDefault(); prev(); break;
+            case "Home": goTo(1); break;
+            case "End": goTo(TOTAL); break;
+        }
+    });
+    let touchStartX = 0;
+    document.addEventListener("touchstart", function (e) { touchStartX = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener("touchend", function (e) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) > 40) { dx < 0 ? next() : prev(); }
+    }, { passive: true });
+
+    scaleStage();
+    window.addEventListener("resize", scaleStage);
+    const startSlide = Math.min(Math.max(parseInt(location.hash.slice(1)) || 1, 1), TOTAL);
+    if (startSlide > 1) goTo(startSlide);
+    else progress.style.width = (1 / TOTAL * 100) + "%";
+
+    const themeToggle = document.getElementById("theme-toggle");
+    function applyTheme(dark) {
+        if (dark) {
+            document.documentElement.setAttribute("data-theme", "dark");
+            themeToggle.textContent = "◑ light";
+        } else {
+            document.documentElement.removeAttribute("data-theme");
+            themeToggle.textContent = "◑ dark";
+        }
+    }
+    applyTheme(localStorage.getItem("theme") === "dark");
+    themeToggle.addEventListener("click", function () {
+        const isDark = document.documentElement.hasAttribute("data-theme");
+        applyTheme(!isDark);
+        localStorage.setItem("theme", !isDark ? "dark" : "light");
+    });
+})();
+</script>
+</body>
+</html>
